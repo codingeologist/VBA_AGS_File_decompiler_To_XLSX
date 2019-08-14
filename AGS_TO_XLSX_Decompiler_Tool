@@ -1,0 +1,243 @@
+Attribute VB_Name = "AGS_Decompiler"
+Option Explicit
+Sub AddData()
+' AddData Macro
+' by Coding Geologist
+
+' For quicker running disable all calculations and updating during the macro operation
+' reset on completion of the macro
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Application.EnableEvents = False
+
+' Declare Variables
+Dim wbTarget As Workbook
+Dim wbSource As Variant
+Dim endRow As Integer
+Dim pasteRowIndex As Integer
+Dim r As Integer
+
+'Open File-Dialog to navigate to data folder
+    Set wbTarget = ThisWorkbook
+    wbSource = Application.GetOpenFilename("Data Files, *.AGS", 1, "Files to process", , False)
+
+' If no file selected Stop function
+    If TypeName(wbSource) = "Boolean" Then Exit Sub
+    
+' Open Data file and delimit with comma separation
+    Workbooks.OpenText wbSource, _
+        Origin:=xlMSDOS, StartRow:=1, DataType:=xlDelimited, TextQualifier:= _
+        xlDoubleQuote, ConsecutiveDelimiter:=True, Tab:=False, Semicolon:=False, _
+        Comma:=True, Space:=False, Other:=False, FieldInfo:=Array(Array(1, 1), _
+        Array(2, 1)), TrailingMinusNumbers:=True
+        
+'Set Source workbook
+    Set wbSource = ActiveWorkbook
+    
+'Copy data
+' TODO: For now transfers the first 60000 rows of the AGS file need to change this
+' TODO: to determine data extent to avoid long processing times for smaller files
+    wbTarget.Worksheets(1).Range("A1:AH60000").Value = wbSource.Worksheets(1).Range("A1:AH60000").Value
+
+' Determine last used row of the dataframe
+    endRow = Worksheets(1).UsedRange.Rows.Count
+
+' Close Source Workbook
+    wbSource.Close
+
+' Call get_geol and get_ispt functions
+    Call get_geol
+    Call get_ispt
+    Call get_loca
+
+' Delete extraneous rows for Pandas to read the header easier
+Worksheets(2).Activate
+    Rows("3:4").Select
+    Selection.Delete Shift:=xlUp
+
+Worksheets(3).Activate
+    Rows("3:4").Select
+    Selection.Delete Shift:=xlUp
+
+Worksheets(4).Activate
+    Rows("3:4").Select
+    Selection.Delete Shift:=xlUp
+
+'Copy location co-ordinates from "LOCA" to "ISPT" for easier processing later
+Worksheets(3).Range("D2").Value = "Loca_E"
+Worksheets(3).Range("D2").Value = "Loca_N"
+
+    Worksheets(3).Range("D3").FormulaR1C1 = "=VLOOKUP(RC[-2],LOCA!R3C2:R1000C6,4,FALSE)"
+    Range("D3").Select
+    Selection.AutoFill Destination:=Range("D3:D" & Range("D" & Rows.Count).End(xlUp).Row)
+    
+    Worksheets(3).Range("E3").FormulaR1C1 = "=VLOOKUP(RC[-3],LOCA!R3C2:R1000C6,5,FALSE)"
+    Range("D3").Select
+    Selection.AutoFill Destination:=Range("D3:D" & Range("D" & Rows.Count).End(xlUp).Row)
+
+Worksheets(1).Activate
+
+' Messagebox prompt to inform user of successful data import and extent of dataframe
+MsgBox ("AGS Data Imported! the length of the dataframe is " & endRow & " rows")
+
+Application.ScreenUpdating = True
+Application.Calculation = xlCalculationAutomatic
+Application.EnableEvents = True
+End Sub
+
+Sub get_geol()
+' get_geol Macro
+' by Coding Geologist
+
+' For quicker running disable all calculations and updating during the macro operation
+' reset on completion of the macro
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Application.EnableEvents = False
+
+' Declare Variables
+Dim pasteRowIndex As Integer
+Dim r As Integer
+Dim endRow As Integer
+
+'Add new worksheet with specific name
+With ThisWorkbook
+    .Sheets.Add(After:=.Sheets(.Sheets.Count)).Name = "GEOL"
+End With
+
+' Determine last used row of the dataframe
+    endRow = Worksheets(1).UsedRange.Rows.Count
+
+' For-loop to iterate through each dataframe row of the "GEOL" group
+' And transfer to the newly created worksheet
+Worksheets(1).Activate
+pasteRowIndex = 1
+    
+    For r = 1 To endRow
+    
+        If Cells(r, Columns("B").Column).Value = "GEOL" Then
+            
+            Rows(r).Select
+            Range(Selection, Selection.End(xlDown)).Select
+            Selection.Copy
+
+            Worksheets("GEOL").Activate
+            Rows(pasteRowIndex).Select
+            ActiveSheet.Paste
+            
+            pasteRowIndex = pasteRowIndex + 1
+            
+            Worksheets(1).Activate
+            
+        End If
+        
+    Next r
+
+Application.ScreenUpdating = True
+Application.Calculation = xlCalculationAutomatic
+Application.EnableEvents = True
+End Sub
+Sub get_ispt()
+' get_geol Macro
+' by Coding Geologist
+
+' For quicker running disable all calculations and updating during the macro operation
+' reset on completion of the macro
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Application.EnableEvents = False
+
+' Declare Variables
+Dim pasteRowIndex As Integer
+Dim r As Integer
+Dim endRow As Integer
+
+'Add new worksheet with specific name
+With ThisWorkbook
+    .Sheets.Add(After:=.Sheets(.Sheets.Count)).Name = "ISPT"
+End With
+
+' Determine last used row of the dataframe
+    endRow = Worksheets(1).UsedRange.Rows.Count
+
+' For-loop to iterate through each dataframe row of the "ISPT" group
+' And transfer to the newly created worksheet
+Worksheets(1).Activate
+pasteRowIndex = 1
+    
+    For r = 1 To endRow
+        
+        If Cells(r, Columns("B").Column).Value = "ISPT" Then
+        
+            Rows(r).Select
+            Range(Selection, Selection.End(xlDown)).Select
+            Selection.Copy
+
+            Worksheets("ISPT").Activate
+            Rows(pasteRowIndex).Select
+            ActiveSheet.Paste
+            
+            pasteRowIndex = pasteRowIndex + 1
+            
+            Worksheets(1).Activate
+            
+        End If
+        
+    Next r
+
+Application.ScreenUpdating = True
+Application.Calculation = xlCalculationAutomatic
+Application.EnableEvents = True
+End Sub
+Sub get_loca()
+' get_loca Macro
+' by Coding Geologist
+
+' For quicker running disable all calculations and updating during the macro operation
+' reset on completion of the macro
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Application.EnableEvents = False
+
+' Declare Variables
+Dim pasteRowIndex As Integer
+Dim r As Integer
+Dim endRow As Integer
+
+'Add new worksheet with specific name
+With ThisWorkbook
+    .Sheets.Add(After:=.Sheets(.Sheets.Count)).Name = "LOCA"
+End With
+
+' Determine last used row of the dataframe
+    endRow = Worksheets(1).UsedRange.Rows.Count
+
+' For-loop to iterate through each dataframe row of the "LOCA" group
+' And transfer to the newly created worksheet
+Worksheets(1).Activate
+pasteRowIndex = 1
+    
+    For r = 1 To endRow
+        
+        If Cells(r, Columns("B").Column).Value = "LOCA" Then
+        
+            Rows(r).Select
+            Range(Selection, Selection.End(xlDown)).Select
+            Selection.Copy
+
+            Worksheets("LOCA").Activate
+            Rows(pasteRowIndex).Select
+            ActiveSheet.Paste
+            
+            pasteRowIndex = pasteRowIndex + 1
+            
+            Worksheets(1).Activate
+            
+        End If
+        
+    Next r
+
+Application.ScreenUpdating = True
+Application.Calculation = xlCalculationAutomatic
+Application.EnableEvents = True
+End Sub
